@@ -1,0 +1,9 @@
+module github.com/thefloweringash/hass_ir_adapter
+
+go 1.12
+
+require (
+	github.com/eclipse/paho.mqtt.golang v1.2.0
+	golang.org/x/net v0.0.0-20190522155817-f3200d17e092 // indirect
+	gopkg.in/yaml.v2 v2.2.2
+)
