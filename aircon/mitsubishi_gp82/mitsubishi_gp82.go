@@ -125,7 +125,7 @@ func (ac *MitsubishiAircon) ValidState(state aircon.State) bool {
 
 func (ac *MitsubishiAircon) DefaultState() aircon.State {
 	return aircon.State{
-		"off", "auto", 18,
+		Mode: "off", FanMode: "auto", Temperature: 18,
 	}
 }
 

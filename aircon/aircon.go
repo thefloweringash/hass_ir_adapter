@@ -125,11 +125,11 @@ func stateTemplate(fieldName string) (string, error) {
 	stateReflection := reflect.TypeOf(State{})
 	field, ok := stateReflection.FieldByName(fieldName)
 	if !ok {
-		return "", fmt.Errorf("Missing state field '%s'", field)
+		return "", fmt.Errorf("Missing state field '%v'", field)
 	}
 	name, ok := field.Tag.Lookup("json")
 	if !ok {
-		return "", fmt.Errorf("Missing json tag on state field '%s'", field)
+		return "", fmt.Errorf("Missing json tag on state field '%v'", field)
 	}
 	return fmt.Sprintf("{{ value_json.%s }}", name), nil
 }
@@ -275,7 +275,7 @@ func (aircon *Aircon) Run() (func(), error) {
 			}
 
 			if err := impl.PushState(newState); err != nil {
-				log.Printf("Error %s pushing state: %s", err, newState)
+				log.Printf("Error %s pushing state: %v", err, newState)
 				continue
 			}
 
