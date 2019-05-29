@@ -1,0 +1,35 @@
+version: 2.1
+
+workflows:
+  version: 2
+  build-and-test:
+    jobs:
+      - go-build-and-test
+      - nix-build-and-test-stable
+      - nix-build-and-test-unstable
+
+jobs:
+  go-build-and-test:
+    docker:
+      - image: circleci/golang:1.11
+    steps:
+      - run:
+          name: setup environment
+          command: echo 'CGO_ENABLED=0' >> $BASH_ENV
+      - checkout
+      - run: go build
+      - run: go test -v ./...
+
+  nix-build-and-test-stable:
+    docker:
+      - image: nixorg/nix:circleci
+    steps:
+      - checkout
+      - run: nix-build -I nixpkgs=channel:nixos-19.03
+
+  nix-build-and-test-unstable:
+    docker:
+      - image: nixorg/nix:circleci
+    steps:
+      - checkout
+      - run: nix-build -I nixpkgs=channel:nixos-unstable
