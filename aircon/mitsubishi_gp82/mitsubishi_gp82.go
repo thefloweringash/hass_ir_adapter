@@ -1,10 +1,13 @@
 package mitsubishi_gp82
 
 import (
+	"encoding/binary"
 	"fmt"
 
 	"github.com/thefloweringash/hass_ir_adapter/aircon"
 	"github.com/thefloweringash/hass_ir_adapter/emitters"
+
+	"gopkg.in/restruct.v1"
 )
 
 type MitsubishiAircon struct {
@@ -44,26 +47,72 @@ func checksum(d []byte) byte {
 	return checksum
 }
 
-func encode(state aircon.State) ([]byte, error) {
-	// There's an intermediate state here that the aircon.State expands into.
-	// It's not realised as a type, just as local variables.
+type FullState struct {
+	On           bool
+	Mode         Mode
+	WindSpeed    WindSpeed
+	DryIntensity DryIntensity
+	Temperature  byte
+}
 
-	var timerMode byte = 0
-	var timerValue byte = 0
-	var isTimerCommand byte = 0
-	var on byte
-	var dryIntensity DryIntensity = DryStandard
-	var mode Mode
-	var windDirection byte = 0 // auto
-	var windSpeed WindSpeed = WindAuto
-	var coolFeeling byte = 0
+type Packet struct {
+	Header []byte `struct:"[5]byte"`
 
-	if state.Mode == "off" {
-		on = 0
-	} else {
-		on = 1
+	Padding1  byte `struct:"uint8:3"`
+	TimerMode byte `struct:"uint8:2"`
+	OnOff     byte `struct:"uint8:1"`
+	Padding2  byte `struct:"uint8:2"`
 
+	Padding3     byte `struct:"uint8:4"`
+	DryIntensity byte `struct:"uint8:2"`
+	Mode         byte `struct:"uint8:2"`
+
+	Padding4    byte `struct:"uint8:4"`
+	Temperature byte `struct:"uint8:4"`
+
+	IsTimerCommand byte `struct:"uint8:2"`
+	WindDirection  byte `struct:"uint8:3"`
+	WindSpeed      byte `struct:"uint8:3"`
+
+	TimerValue byte `struct:"uint8"`
+
+	Padding5 byte `struct:"uint8"`
+
+	Padding6    byte `struct:"uint8:2"`
+	CoolFeeling byte `struct:"uint8:1"`
+	Padding7    byte `struct:"uint8:5"`
+
+	Padding8 byte `struct:"uint8"`
+}
+
+func (config FullState) Encode() ([]byte, error) {
+	var onOff byte
+	if config.On {
+		onOff = 1
 	}
+
+	packet := Packet{
+		Header:   []byte{0x23, 0xcb, 0x26, 0x01, 0x00},
+		Padding1: 1,
+
+		OnOff:        onOff,
+		Temperature:  31 - config.Temperature,
+		Mode:         byte(config.Mode),
+		WindSpeed:    byte(config.WindSpeed),
+		DryIntensity: byte(config.DryIntensity),
+	}
+
+	packed, err := restruct.Pack(binary.LittleEndian, &packet)
+	if err != nil {
+		return packed, err
+	}
+
+	return append(packed, checksum(packed)), nil
+}
+
+func Encode(state aircon.State) ([]byte, error) {
+	var mode Mode
+	var windSpeed WindSpeed
 
 	switch state.Mode {
 	case "off", "heat":
@@ -90,23 +139,16 @@ func encode(state aircon.State) ([]byte, error) {
 		return nil, fmt.Errorf("Unknown fan mode: '%s'", state.FanMode)
 	}
 
-	byte1 := 1<<5 | timerMode<<3 | on<<2
-	byte2 := byte(dryIntensity)<<2 | byte(mode)
-	byte3 := 31 - byte(state.Temperature)
-	byte4 := isTimerCommand<<6 | windDirection<<3 | byte(windSpeed)
-	byte5 := coolFeeling << 5
-
-	encoded := [14]byte{
-		0x23, 0xcb, 0x26, 0x01, 0x00,
-		byte1, byte2, byte3, byte4, timerValue, 0x00, byte5, 0x00,
-	}
-	encoded[13] = checksum(encoded[0:13])
-
-	return encoded[:], nil
+	return FullState{
+		On:          state.Mode != "off",
+		Mode:        mode,
+		Temperature: byte(state.Temperature),
+		WindSpeed:   windSpeed,
+	}.Encode()
 }
 
 func (ac *MitsubishiAircon) PushState(state aircon.State) error {
-	payload, err := encode(state)
+	payload, err := Encode(state)
 	if err != nil {
 		return err
 	}
@@ -119,7 +161,7 @@ func (ac *MitsubishiAircon) PushState(state aircon.State) error {
 }
 
 func (ac *MitsubishiAircon) ValidState(state aircon.State) bool {
-	_, err := encode(state)
+	_, err := Encode(state)
 	return err != nil
 }
 
