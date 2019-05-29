@@ -4,19 +4,19 @@ mqtt:
   password: VighEadd
 
 emitters:
-- id: ir_living_room
-  topic: ir/ESP_1/send
-- id: ir_bedroom
-  topic: ir/ESP_2/send
+  - id: ir_living_room
+    topic: ir/ESP_1/send
+  - id: ir_bedroom
+    topic: ir/ESP_2/send
 
 aircons:
-- id: living_room
-  name: "Living Room"
-  emitter: ir_living_room
-  type: mitsubishi_gp82
-  temperature_topic: homie/ESP_3/temperature/degrees
-- id: bedroom
-  name: "Bedroom"
-  emitter: ir_bedroom
-  type: mitsubishi_gp82
-  temperature_topic: homie/ESP_4/temperature/degrees
+  - id: living_room
+    name: "Living Room"
+    emitter: ir_living_room
+    type: mitsubishi_gp82
+    temperature_topic: homie/ESP_3/temperature/degrees
+  - id: bedroom
+    name: "Bedroom"
+    emitter: ir_bedroom
+    type: mitsubishi_gp82
+    temperature_topic: homie/ESP_4/temperature/degrees

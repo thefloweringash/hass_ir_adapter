@@ -3,16 +3,18 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/eclipse/paho.mqtt.golang"
+
 	"github.com/thefloweringash/hass_ir_adapter/aircon"
 	"github.com/thefloweringash/hass_ir_adapter/aircon/mitsubishi_gp82"
 	"github.com/thefloweringash/hass_ir_adapter/config"
 	"github.com/thefloweringash/hass_ir_adapter/emitters"
 	"github.com/thefloweringash/hass_ir_adapter/emitters/irblaster"
-	"log"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 var f mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {

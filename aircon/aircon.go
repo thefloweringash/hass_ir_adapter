@@ -3,13 +3,15 @@ package aircon
 import (
 	"encoding/json"
 	"fmt"
-	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/thefloweringash/hass_ir_adapter/emitters"
 	"io/ioutil"
 	"log"
 	"path"
 	"reflect"
 	"strconv"
+
+	mqtt "github.com/eclipse/paho.mqtt.golang"
+
+	"github.com/thefloweringash/hass_ir_adapter/emitters"
 )
 
 type AirconController interface {
@@ -296,6 +298,6 @@ func (aircon *Aircon) Run() (func(), error) {
 
 	return func() {
 		stopChan <- true
-		<- stopDoneChan
+		<-stopDoneChan
 	}, nil
 }

@@ -2,6 +2,7 @@ package mitsubishi_gp82
 
 import (
 	"fmt"
+
 	"github.com/thefloweringash/hass_ir_adapter/aircon"
 	"github.com/thefloweringash/hass_ir_adapter/emitters"
 )
