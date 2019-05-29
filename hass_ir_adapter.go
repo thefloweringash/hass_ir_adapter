@@ -10,16 +10,10 @@ import (
 
 	"github.com/eclipse/paho.mqtt.golang"
 
-	"github.com/thefloweringash/hass_ir_adapter/aircon"
-	"github.com/thefloweringash/hass_ir_adapter/aircon/mitsubishi_gp82"
 	"github.com/thefloweringash/hass_ir_adapter/config"
+	"github.com/thefloweringash/hass_ir_adapter/device"
 	"github.com/thefloweringash/hass_ir_adapter/emitters"
-	"github.com/thefloweringash/hass_ir_adapter/emitters/irblaster"
 )
-
-var f mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
-	fmt.Printf("TOPIC: %s\nMSG:%s\n", msg.Topic(), msg.Payload())
-}
 
 func waitForSignal() {
 	sigs := make(chan os.Signal, 1)
@@ -29,33 +23,22 @@ func waitForSignal() {
 
 	go func() {
 		sig := <-sigs
-		fmt.Printf("Received signal: %s", sig)
+		log.Printf("Received signal: %s", sig)
 		done <- true
 	}()
 
 	<-done
 }
 
-func makeAirconController(airconType string, emitter emitters.Emitter) (aircon.AirconController, error) {
-	var impl aircon.AirconController
-	switch airconType {
-	case "mitsubishi_gp82":
-		impl = mitsubishi_gp82.NewAircon(emitter)
-	default:
-		return nil, fmt.Errorf("Unknown aircon type: %s", airconType)
-	}
-	return impl, nil
-}
-
-func makeEmitter(client mqtt.Client, sendTopic string) (emitters.Emitter, error) {
-	return irblaster.NewMQTTIRBlaster(client, sendTopic), nil
-}
-
 func run(cfg config.Config, stateDir string) error {
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "amnesiac"
+	}
+
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(cfg.MQTT.Broker)
-	opts.SetDefaultPublishHandler(f)
-	opts.SetClientID("hass_ir_adapter")
+	opts.SetClientID(fmt.Sprintf("hass_ir_adapter-%d-%v", os.Getpid(), hostname))
 	opts.SetUsername(cfg.MQTT.Username)
 	opts.SetPassword(cfg.MQTT.Password)
 	opts.SetCleanSession(false)
@@ -67,42 +50,33 @@ func run(cfg config.Config, stateDir string) error {
 	}
 
 	emitters := map[string]emitters.Emitter{}
-	for _, emitterCfg := range cfg.Emitters {
-		emitter, err := makeEmitter(c, emitterCfg.Topic)
+	for _, emitterFactory := range cfg.Emitters {
+		emitter, err := emitterFactory.New(c)
 		if err != nil {
 			return err
 		}
-		emitters[emitterCfg.Id] = emitter
+		emitters[emitterFactory.Id()] = emitter
 	}
 
-	aircons := map[string]*aircon.Aircon{}
-	for _, airconCfg := range cfg.Aircons {
-		emitter := emitters[airconCfg.Emitter]
+	devices := map[string]device.Device{}
+	for _, deviceFactory := range cfg.Devices {
+		emitter := emitters[deviceFactory.EmitterId()]
 
 		if emitter == nil {
-			return fmt.Errorf("Invalid emitter reference '%s', in aircon '%s'",
-				airconCfg.Emitter, airconCfg.Id)
+			return fmt.Errorf("invalid emitter reference '%s', in device '%s'",
+				deviceFactory.EmitterId(), deviceFactory.Id())
 		}
 
-		impl, err := makeAirconController(airconCfg.Type, emitter)
+		aircon, err := deviceFactory.New(c, emitter, stateDir)
 		if err != nil {
 			return err
 		}
 
-		aircon, err := aircon.NewAircon(
-			c, emitter, impl,
-			airconCfg.Id, airconCfg.Name, airconCfg.TemperatureTopic,
-			stateDir,
-		)
-		if err != nil {
-			return err
-		}
-
-		aircons[airconCfg.Id] = aircon
+		devices[deviceFactory.Id()] = aircon
 	}
 
-	for _, aircon := range aircons {
-		stop, err := aircon.Run()
+	for _, device := range devices {
+		stop, err := device.Run()
 		if err != nil {
 			return err
 		}
@@ -116,11 +90,11 @@ func run(cfg config.Config, stateDir string) error {
 
 func main() {
 	// mqtt.DEBUG = log.New(os.Stdout, "", log.LstdFlags)
-	mqtt.ERROR = log.New(os.Stdout, "", log.LstdFlags)
+	mqtt.ERROR = log.New(os.Stdout, "", log.Lshortfile)
 
 	var configFile, stateDir string
 	flag.StringVar(&configFile, "config-file", "", "Configuration yaml path")
-	flag.StringVar(&stateDir, "state-dir", "", "State directory")
+	flag.StringVar(&stateDir, "state-dir", "", "StatePtr directory")
 	flag.Parse()
 
 	cfg, err := config.LoadConfig(configFile)

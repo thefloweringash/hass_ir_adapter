@@ -1,15 +1,115 @@
 package config
 
 import (
+	"fmt"
 	"io/ioutil"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
+
+	"github.com/thefloweringash/hass_ir_adapter/aircon/mitsubishi_gp82"
+	"github.com/thefloweringash/hass_ir_adapter/device"
+	"github.com/thefloweringash/hass_ir_adapter/emitters"
+	"github.com/thefloweringash/hass_ir_adapter/emitters/irblaster"
+	"github.com/thefloweringash/hass_ir_adapter/lights/panasonic"
 )
 
 type Config struct {
 	MQTT     MQTT `yaml:",omitempty"`
-	Emitters []Emitter
-	Aircons  []Aircon
+	Emitters []emitters.Factory
+	Devices  []device.Factory
+	Lights   []device.Factory
+}
+
+type GenericConfig struct {
+	MQTT     MQTT
+	Emitters []yaml.Node
+	Aircons  []yaml.Node
+	Lights   []yaml.Node
+}
+
+func getTypeKey(value yaml.Node) (string, error) {
+	asMap := map[string]yaml.Node{}
+	if err := value.Decode(&asMap); err != nil {
+		return "", err
+	}
+	typeNode, ok := asMap["type"]
+	if !ok {
+		return "", fmt.Errorf("missing type entry")
+	}
+	typeString := ""
+	if err := typeNode.Decode(&typeString); err != nil {
+		return "", err
+	}
+	return typeString, nil
+}
+
+func decodeVirtual(value yaml.Node, newFactory func(t string) device.Factory) (device.Factory, error) {
+	var factory device.Factory
+
+	typeString, err := getTypeKey(value)
+	if err != nil {
+		return factory, err
+	}
+
+	factory = newFactory(typeString)
+	if factory == nil {
+		return factory, fmt.Errorf("unknown type: %s", typeString)
+	}
+
+	err = value.Decode(factory)
+	return factory, err
+}
+
+func (c *Config) UnmarshalYAML(value *yaml.Node) error {
+	generic := GenericConfig{}
+	err := value.Decode(&generic)
+	if err != nil {
+		return err
+	}
+
+	c.MQTT = generic.MQTT
+
+	for _, emitterNode := range generic.Emitters {
+		factory := irblaster.Config{}
+		if err := emitterNode.Decode(&factory); err != nil {
+			return err
+		}
+		c.Emitters = append(c.Emitters, &factory)
+	}
+
+	for _, airconNode := range generic.Aircons {
+		factory, err := decodeVirtual(airconNode, func(typeStr string) (factory device.Factory) {
+			switch typeStr {
+			case "mitsubishi_gp82":
+				factory = &mitsubishi_gp82.Config{}
+			}
+			return
+		})
+
+		if err != nil {
+			return err
+		}
+
+		c.Devices = append(c.Devices, factory)
+	}
+
+	for _, lightNode := range generic.Lights {
+		factory, err := decodeVirtual(lightNode, func(typeStr string) (factory device.Factory) {
+			switch typeStr {
+			case "panasonic":
+				factory = &panasonic.Config{}
+			}
+			return
+		})
+
+		if err != nil {
+			return err
+		}
+
+		c.Devices = append(c.Devices, factory)
+	}
+
+	return nil
 }
 
 type MQTT struct {
@@ -25,20 +125,6 @@ func (mqtt *MQTT) isZero() bool {
 
 }
 
-type Emitter struct {
-	Id    string
-	Type  string
-	Topic string
-}
-
-type Aircon struct {
-	Id               string
-	Name             string
-	Type             string
-	Emitter          string
-	TemperatureTopic string `yaml:"temperature_topic"`
-}
-
 func LoadConfig(configFile string) (*Config, error) {
 	fileContents, err := ioutil.ReadFile(configFile)
 
@@ -48,7 +134,7 @@ func LoadConfig(configFile string) (*Config, error) {
 
 	config := Config{}
 
-	if err := yaml.UnmarshalStrict(fileContents, &config); err != nil {
+	if err := yaml.Unmarshal(fileContents, &config); err != nil {
 		return nil, err
 	}
 

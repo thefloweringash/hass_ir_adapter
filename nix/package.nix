@@ -4,6 +4,6 @@
 buildGo111Module {
   name = "hass_ir_adapter";
   src = lib.sourceFilesBySuffices ./.. [ ".go" ".mod" ".sum" ];
-  modSha256 = "01621g84a93cqsc5wb3cjw2vl1r3x5l7kj2iz7jfzknyv73jaihc";
+  modSha256 = "1zj90zvbn258sykl1kdh57y1y34vis0ygjjaicvs60m3v24ig2wf";
   doCheck = true;
 }

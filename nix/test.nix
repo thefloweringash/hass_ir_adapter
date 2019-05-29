@@ -31,7 +31,7 @@ import (<nixpkgs> + "/nixos/tests/make-test.nix") ({ pkgs, lib, ... }:
     $machine->execute('mosquitto_sub -t ir/ESP_1/send -F %x | tee /tmp/esp1.log &');
     $machine->execute('mosquitto_sub -t homeassistant/climate/living_room/state -F %p | tee /tmp/climate.log &');
 
-    $machine->execute('mosquitto_pub -t homeassistant/climate/living_room/mode_command -m cool');
+    $machine->execute('mosquitto_pub -t homeassistant/climate/living_room/set_mode -m cool');
 
     $machine->sleep(5);
 
