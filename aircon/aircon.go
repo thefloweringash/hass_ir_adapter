@@ -23,7 +23,7 @@ type State struct {
 }
 
 func (state State) Bindings() []device.Binding {
-	return device.AutomaticBindings(state)
+	return device.AutomaticBindings(state, "state")
 }
 
 type AirconController interface {

@@ -21,7 +21,7 @@ type State struct {
 }
 
 func (state State) Bindings() []device.Binding {
-	bindings := device.AutomaticBindings(state)
+	bindings := device.AutomaticBindings(state, "value")
 	bindings = append(bindings, &device.CallbackBinding{
 		Topic: "switch",
 		Conf: map[string]string{

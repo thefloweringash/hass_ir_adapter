@@ -14,7 +14,7 @@ type testAutoState struct {
 }
 
 func (s testAutoState) Bindings() []Binding {
-	return AutomaticBindings(s)
+	return AutomaticBindings(s, "state")
 }
 
 func TestGenerateStateConfig(t *testing.T) {
@@ -36,7 +36,7 @@ func TestGenerateStateConfig(t *testing.T) {
 }
 
 func TestBindings(t *testing.T) {
-	bindings := AutomaticBindings(testAutoState{})
+	bindings := AutomaticBindings(testAutoState{}, "state")
 
 	tests := []struct {
 		newState testAutoState

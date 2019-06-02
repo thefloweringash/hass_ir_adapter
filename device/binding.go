@@ -28,7 +28,8 @@ func (f stateField) CommandTopic(prefix string) string {
 }
 
 type InferredBinding struct {
-	Field stateField
+	Field          stateField
+	TemplateSuffix string
 }
 
 func (b InferredBinding) String() string {
@@ -45,9 +46,9 @@ func (b InferredBinding) RelativeTopic() string {
 
 func (b InferredBinding) Config() map[string]string {
 	return map[string]string{
-		b.Field.HassName + "_command_topic":  b.Field.CommandTopic("~"),
-		b.Field.HassName + "_state_topic":    "~/state",
-		b.Field.HassName + "_state_template": fmt.Sprintf("{{ value_json.%s }}", b.Field.JsonName),
+		b.Field.HassName + "_command_topic":                               b.Field.CommandTopic("~"),
+		b.Field.HassName + "_state_topic":                                 "~/state",
+		fmt.Sprintf("%s_%s_template", b.Field.HassName, b.TemplateSuffix): fmt.Sprintf("{{ value_json.%s }}", b.Field.JsonName),
 	}
 }
 
@@ -80,12 +81,13 @@ func reflectOnState(state interface{}) []stateField {
 	return fields
 }
 
-func AutomaticBindings(state State) []Binding {
+func AutomaticBindings(state State, templateSuffix string) []Binding {
 	fields := reflectOnState(state)
 	bindings := make([]Binding, 0, len(fields))
 	for _, field := range fields {
 		bindings = append(bindings, InferredBinding{
-			Field: field,
+			Field:          field,
+			TemplateSuffix: templateSuffix,
 		})
 	}
 	return bindings
