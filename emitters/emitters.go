@@ -4,31 +4,23 @@ import (
 	"log"
 
 	"github.com/eclipse/paho.mqtt.golang"
-
-	"github.com/thefloweringash/hass_ir_adapter/emitters/intervals"
 )
 
 type Emitter interface {
-	Emit(commands ...Command) error
+	Emit(commands Command) error
+	Lock()
+	Unlock()
 }
 
-const (
-	Panasonic Encoding = 241
-)
-
-type Encoding int
-
-type Command struct {
-	Encoding Encoding
-	Payload  []byte
+type Command interface {
 }
 
-func (cmd Command) Intervals() []uint16 {
-	switch cmd.Encoding {
-	case Panasonic:
-		return intervals.EncodePanasonic(cmd.Payload)
-	}
-	panic("Encoding unknown command type")
+type Delay struct {
+	Millis uint16
+}
+
+type Raw struct {
+	Intervals []uint16
 }
 
 type Factory interface {

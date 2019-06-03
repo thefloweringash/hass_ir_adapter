@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"time"
 
@@ -17,6 +18,15 @@ type IRKit struct {
 	Endpoint string
 	Logger   *log.Logger
 	Token    *token
+}
+
+func (irkit *IRKit) Lock() {
+	delay := irkit.Token.Take()
+	irkit.Logger.Printf("acquired token after %s delay", delay)
+}
+
+func (irkit *IRKit) Unlock() {
+	irkit.Token.Return()
 }
 
 func New(endpoint string, logger *log.Logger) *IRKit {
@@ -37,25 +47,32 @@ type Message struct {
 	Intervals []uint16 `json:"data"`
 }
 
-func (irkit *IRKit) Emit(commands ...emitters.Command) error {
-	token, delay := irkit.Token.Take()
-	defer irkit.Token.Return(token)
+type ToIntervals interface {
+	ToIntervals() []uint16
+}
 
-	irkit.Logger.Printf("Acquired token after %s delay", delay)
-
-	var intervals []uint16
-	for _, cmd := range commands {
-		intervals = append(intervals, cmd.Intervals()...)
+func (irkit *IRKit) Emit(command emitters.Command) error {
+	intervalCommand, ok := command.(ToIntervals)
+	if !ok {
+		return errors.New("command not convertible to intervals")
 	}
 
+	intervals := intervalCommand.ToIntervals()
+	irkitIntervals := []uint16{}
+
 	for i := range intervals {
-		intervals[i] *= 2
+		x := int(intervals[i]) * 2
+		for x > math.MaxUint16 {
+			irkitIntervals = append(irkitIntervals, math.MaxUint16, 0)
+			x -= math.MaxUint16
+		}
+		irkitIntervals = append(irkitIntervals, uint16(x))
 	}
 
 	msg := Message{
 		Format:    "raw",
 		Freq:      38,
-		Intervals: intervals,
+		Intervals: irkitIntervals,
 	}
 
 	var err error
@@ -74,7 +91,7 @@ func (irkit *IRKit) Emit(commands ...emitters.Command) error {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("X-Requested-With", "curl")
 
-	irkit.Logger.Printf("Sending request: %s\n", jsonString)
+	irkit.Logger.Printf("sending request: %s\n", jsonString)
 
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
@@ -83,7 +100,7 @@ func (irkit *IRKit) Emit(commands ...emitters.Command) error {
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return errors.New(fmt.Sprintf("Unexpected status code: %d", response.StatusCode))
+		return fmt.Errorf("unexpected status code: %d", response.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(response.Body)
@@ -91,7 +108,7 @@ func (irkit *IRKit) Emit(commands ...emitters.Command) error {
 		return err
 	}
 
-	irkit.Logger.Printf("Message response: %s\n", string(body))
+	irkit.Logger.Printf("message response: %s\n", string(body))
 
 	return nil
 }

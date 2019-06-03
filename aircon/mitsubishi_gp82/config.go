@@ -1,6 +1,8 @@
 package mitsubishi_gp82
 
 import (
+	"log"
+
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 
 	"github.com/thefloweringash/hass_ir_adapter/aircon"
@@ -13,13 +15,9 @@ type Config struct {
 	types.Aircon `yaml:",inline"`
 }
 
-func (cfg *Config) New(
-	c mqtt.Client,
-	emitter emitters.Emitter,
-	stateDir string,
-) (device.Device, error) {
-	impl := &Device{emitter}
-	return aircon.New(&cfg.Aircon, c, impl, stateDir)
+func (cfg *Config) New(c mqtt.Client, logger *log.Logger, stateDir string, emitter emitters.Emitter) (device.Device, error) {
+	impl := &Device{}
+	return aircon.New(&cfg.Aircon, c, emitter, impl, stateDir)
 }
 
 func (cfg *Config) Id() string {

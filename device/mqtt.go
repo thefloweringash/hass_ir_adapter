@@ -37,7 +37,7 @@ func (d Mqtt) Subscribe(channel chan Update, state State) error {
 		if err := token.Error(); err != nil {
 			return err
 		}
-		d.Logger.Printf("Subscribed to %s", topic)
+		d.Logger.Printf("subscribed to %s", topic)
 	}
 
 	return nil
@@ -59,16 +59,8 @@ func (d Mqtt) publishJson(relativeTopic string, value interface{}) error {
 	return token.Error()
 }
 
-func (d Mqtt) PublishConfig(name string, state State, config interface{}) error {
-	configMap := map[string]interface{}{}
-
-	configJson, err := json.Marshal(config)
-	if err != nil {
-		return err
-	}
-	if err := json.Unmarshal(configJson, &configMap); err != nil {
-		return err
-	}
+func (d Mqtt) PublishConfig(name string, state State, config map[string]interface{}) error {
+	configMap := config
 
 	for k, v := range GenerateStateConfig(name, d.Prefix(), state) {
 		configMap[k] = v

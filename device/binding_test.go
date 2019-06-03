@@ -14,7 +14,8 @@ type testAutoState struct {
 }
 
 func (s testAutoState) Bindings() []Binding {
-	return AutomaticBindings(s, "state")
+	var options AutomaticBindingOptions
+	return AutomaticBindings(s, options)
 }
 
 func TestGenerateStateConfig(t *testing.T) {
@@ -36,7 +37,8 @@ func TestGenerateStateConfig(t *testing.T) {
 }
 
 func TestBindings(t *testing.T) {
-	bindings := AutomaticBindings(testAutoState{}, "state")
+	options := AutomaticBindingOptions{}
+	bindings := AutomaticBindings(testAutoState{}, options)
 
 	tests := []struct {
 		newState testAutoState
@@ -55,7 +57,7 @@ func TestBindings(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		newState, err := deriveState(testAutoState{}, test.binding.(InferredBinding), test.value)
+		newState, err := deriveState(testAutoState{}, test.binding.(FieldBinding), test.value)
 		assert.Nil(t, err)
 		assert.Equal(t, test.newState, newState)
 	}

@@ -1,28 +1,25 @@
 package lights
 
 import (
-	"github.com/eclipse/paho.mqtt.golang"
+	"reflect"
 
-	"github.com/thefloweringash/hass_ir_adapter/config/types"
 	"github.com/thefloweringash/hass_ir_adapter/device"
 )
 
-type Controller interface {
-	PushState(state State) error
-}
-
-type Lights struct {
-	controller Controller
-}
+const (
+	ColorTempBluest  = 153
+	ColorTempReddest = 500
+	ColorTempWhitest = (ColorTempReddest + ColorTempBluest) / 2
+	BrightnessMin    = 0
+	BrightnessMax    = 255
+)
 
 type State struct {
-	On         bool  `json:"on,string"`
-	Brightness uint8 `json:"brightness" hass:"brightness"`
+	On bool `json:"on,string"`
 }
 
-func (state State) Bindings() []device.Binding {
-	bindings := device.AutomaticBindings(state, "value")
-	bindings = append(bindings, &device.CallbackBinding{
+func SwitchBinding() device.Binding {
+	return &device.CallbackBinding{
 		Topic: "switch",
 		Conf: map[string]string{
 			"state_value_template": "{{ value_json.on }}",
@@ -31,36 +28,34 @@ func (state State) Bindings() []device.Binding {
 			"command_topic":        "~/switch",
 		},
 		Callback: func(state device.State, value string) (device.State, error) {
-			newState := state.(State)
-			newState.On = value == "true"
-			return newState, nil
+			stateReflection := reflect.TypeOf(state)
+			newStatePtr := reflect.New(stateReflection)
+			newStatePtr.Elem().Set(reflect.ValueOf(state))
+
+			target := newStatePtr.Elem().FieldByName("On")
+			target.SetBool(value == "true")
+
+			return newStatePtr.Elem().Interface().(device.State), nil
 		},
-	})
-	return bindings
+	}
 }
 
-type Config struct{}
-
-func (l *Lights) Config() interface{} {
-	return Config{}
+func (state State) Bindings() []device.Binding {
+	return []device.Binding{SwitchBinding()}
 }
 
-func (l *Lights) DefaultState() device.State {
-	return State{}
+func Lerp(a, b float64, proportion float64) float64 {
+	return b*proportion + a*(1-proportion)
 }
 
-func (l *Lights) PushState(state device.State) error {
-	return l.controller.PushState(state.(State))
+func Proportion(a, b float64, val float64) float64 {
+	return (val - a) / (b - a)
 }
 
-func New(config *types.Light, c mqtt.Client, controller Controller, stateDir string) (device.Device, error) {
-	lights := &Lights{controller: controller}
-	return device.New(
-		c,
-		config.Id,
-		config.Name,
-		"light",
-		lights,
-		stateDir,
-	)
+func ColorTempProportion(val uint16) float64 {
+	return Proportion(ColorTempBluest, ColorTempReddest, float64(val))
+}
+
+func BrightnessProportion(val uint8) float64 {
+	return Proportion(BrightnessMin, BrightnessMax, float64(val))
 }

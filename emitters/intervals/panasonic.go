@@ -17,22 +17,14 @@ const (
 	PanasonicZeroSpace      = PanasonicTick * PanasonicZeroSpaceTicks
 )
 
+var EncodingPanasonic = GenericEncoding{
+	HeaderMark:  PanasonicHdrMark,
+	HeaderSpace: PanasonicHdrSpace,
+	BitMark:     PanasonicBitMark,
+	OneSpace:    PanasonicOneSpace,
+	ZeroSpace:   PanasonicZeroSpace,
+}
+
 func EncodePanasonic(payload []byte) []uint16 {
-	result := []uint16{PanasonicHdrMark, PanasonicHdrSpace}
-
-	for _, b := range payload {
-		for i := uint8(0); i < 8; i++ {
-			var space uint16
-			if b&(1<<i) != 0 {
-				space = PanasonicOneSpace
-			} else {
-				space = PanasonicZeroSpace
-			}
-			result = append(result, PanasonicBitMark, space)
-		}
-	}
-
-	result = append(result, PanasonicBitMark)
-
-	return result
+	return EncodeGeneric(EncodingPanasonic, payload)
 }

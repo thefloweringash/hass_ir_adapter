@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 
@@ -12,7 +13,7 @@ import (
 )
 
 type Factory interface {
-	New(c mqtt.Client, emitter emitters.Emitter, stateDir string) (Device, error)
+	New(c mqtt.Client, logger *log.Logger, stateDir string, emitter emitters.Emitter) (Device, error)
 	Id() string
 	EmitterId() string
 }
@@ -22,17 +23,18 @@ type Device interface {
 }
 
 type DeviceImpl interface {
-	Config() interface{}
+	Config() map[string]interface{}
 	DefaultState() State
-	PushState(state State) error
+	PushState(emitter emitters.Emitter, state State) error
 }
 
 type device struct {
-	name   string
-	state  state
-	mqtt   Mqtt
-	impl   DeviceImpl
-	logger *log.Logger
+	name    string
+	state   state
+	mqtt    Mqtt
+	emitter emitters.Emitter
+	impl    DeviceImpl
+	logger  *log.Logger
 }
 
 type Update struct {
@@ -45,6 +47,7 @@ func New(
 	id string,
 	name string,
 	class string,
+	emitter emitters.Emitter,
 	impl DeviceImpl,
 	stateDir string,
 ) (Device, error) {
@@ -60,8 +63,9 @@ func New(
 			Client: c,
 			Logger: log.New(os.Stdout, fmt.Sprintf("device/%s/mqtt: ", id), log.Lshortfile),
 		},
-		impl:   impl,
-		logger: log.New(os.Stdout, fmt.Sprintf("device/%s: ", id), log.Lshortfile),
+		emitter: emitter,
+		impl:    impl,
+		logger:  log.New(os.Stdout, fmt.Sprintf("device/%s: ", id), log.Lshortfile),
 	}, nil
 }
 
@@ -72,12 +76,55 @@ func (d *device) publishConfig() error {
 
 func (d *device) Run() (func(), error) {
 	stopChan := make(chan bool, 1)
-	stopDoneChan := make(chan bool, 1)
+	stopped := make(chan bool, 1)
 
 	commandChan := make(chan Update)
 
 	if err := d.mqtt.Subscribe(commandChan, d.impl.DefaultState()); err != nil {
 		return nil, err
+	}
+
+	// Gather commands until the minimum interval of 100ms has elapsed
+	readInitialUpdate := func() ([]Update, bool) {
+		var updates []Update
+		timeout := make(chan bool, 1)
+		timeoutStarted := false
+
+		for {
+			select {
+			case update := <-commandChan:
+				updates = append(updates, update)
+				if !timeoutStarted {
+					timeoutStarted = true
+					go func() {
+						time.Sleep(100 * time.Millisecond)
+						timeout <- true
+					}()
+				}
+
+			case <-timeout:
+				return updates, true
+
+			case <-stopChan:
+				return nil, false
+			}
+		}
+	}
+
+	// Continue to read updates until the channel is read
+	readUpdatesUntil := func(ch chan bool) ([]Update, bool) {
+		var updates []Update
+
+		for {
+			select {
+			case update := <-commandChan:
+				updates = append(updates, update)
+			case <-ch:
+				return updates, true
+			case <-stopChan:
+				return nil, false
+			}
+		}
 	}
 
 	if err := d.state.LoadState(); err != nil {
@@ -89,54 +136,79 @@ func (d *device) Run() (func(), error) {
 	}
 
 	go func() {
-		running := true
-		for running {
+		defer func() { stopped <- true }()
+
+		defer func() {
+			d.logger.Printf("removing config")
+			if err := d.mqtt.RemoveConfig(); err != nil {
+				d.logger.Printf("error removing retained config: %s", err)
+			}
+			d.logger.Printf("removing state")
+			if err := d.mqtt.RemoveState(); err != nil {
+				d.logger.Printf("error removing retained state: %s", err)
+			}
+		}()
+
+		for {
 			d.logger.Printf("state=%v, waiting for command", d.state.State)
 
 			if err := d.mqtt.PublishState(d.state.State); err != nil {
-				d.logger.Printf("Error publishing state: %s", err)
+				d.logger.Printf("error publishing state: %s", err)
 			}
 
-			var update Update
-			select {
-			case update = <-commandChan:
-			case <-stopChan:
-				running = false
-				continue
+			updates, running := readInitialUpdate()
+			if !running {
+				return
+			}
+			d.logger.Printf("locking emitter for %d updates\n", len(updates))
+
+			emitterReady := make(chan bool)
+			go func() {
+				d.emitter.Lock()
+				emitterReady <- true
+			}()
+
+			moreUpdates, running := readUpdatesUntil(emitterReady)
+			if !running {
+				return
+			}
+			d.logger.Printf("got %d more updates while waiting for emitter", len(moreUpdates))
+
+			updates = append(updates, moreUpdates...)
+
+			newState := d.state.State
+			for _, update := range updates {
+				d.logger.Printf("processing update %s <- %s", update.binding, update.value)
+
+				updatedState, err := update.binding.Apply(newState, update.value)
+				if err != nil {
+					d.logger.Printf("error deriving new state: %s", err)
+					continue
+				}
+				newState = updatedState
 			}
 
-			d.logger.Printf("processing update %s <- %s", update.binding, update.value)
+			d.logger.Printf("pushing state %v", newState)
 
-			newState, err := update.binding.Apply(d.state.State, update.value)
+			err := d.impl.PushState(d.emitter, newState)
+
+			d.emitter.Unlock()
+
 			if err != nil {
-				d.logger.Printf("Error deriving new state: %s", err)
-				continue
-			}
-
-			if err := d.impl.PushState(newState); err != nil {
-				d.logger.Printf("Error %s pushing state: %v", err, newState)
+				d.logger.Printf("error %s pushing state: %v", err, newState)
 				continue
 			}
 
 			d.state.State = newState
 
 			if err := d.state.WriteState(); err != nil {
-				d.logger.Printf("Error persisting state: %s", err)
+				d.logger.Printf("error persisting state: %s", err)
 			}
 		}
-
-		if err := d.mqtt.RemoveConfig(); err != nil {
-			d.logger.Printf("Error removing retained config: %s", err)
-		}
-		if err := d.mqtt.RemoveState(); err != nil {
-			d.logger.Printf("Error remove retained state: %s", err)
-		}
-
-		stopDoneChan <- true
 	}()
 
 	return func() {
 		stopChan <- true
-		<-stopDoneChan
+		<-stopped
 	}, nil
 }

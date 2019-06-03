@@ -1,4 +1,4 @@
-package panasonic
+package daiko
 
 import (
 	"fmt"
@@ -33,8 +33,6 @@ func (config *Config) UnmarshalYAML(value *yaml.Node) error {
 		config.Channel = Channel1
 	case 2:
 		config.Channel = Channel2
-	case 3:
-		config.Channel = Channel3
 	default:
 		return fmt.Errorf("invalid channel value: %d", raw.Channel)
 	}
@@ -42,7 +40,7 @@ func (config *Config) UnmarshalYAML(value *yaml.Node) error {
 }
 
 func (config *Config) New(c mqtt.Client, logger *log.Logger, stateDir string, emitter emitters.Emitter) (device.Device, error) {
-	impl := &Device{config.Channel}
+	impl := &Device{logger, config.Channel}
 	return device.New(c, config.Light.Id, config.Name, "light", emitter, impl, stateDir)
 }
 

@@ -68,7 +68,9 @@ func run(cfg config.Config, stateDir string) error {
 				deviceFactory.EmitterId(), deviceFactory.Id())
 		}
 
-		aircon, err := deviceFactory.New(c, emitter, stateDir)
+		logger := log.New(os.Stdout, fmt.Sprintf("device/%s: ", deviceFactory.Id()), log.Lshortfile)
+
+		aircon, err := deviceFactory.New(c, logger, stateDir, emitter)
 		if err != nil {
 			return err
 		}
@@ -94,8 +96,8 @@ func main() {
 	mqtt.ERROR = log.New(os.Stdout, "", log.Lshortfile)
 
 	var configFile, stateDir string
-	flag.StringVar(&configFile, "config-file", "", "Configuration yaml path")
-	flag.StringVar(&stateDir, "state-dir", "", "StatePtr directory")
+	flag.StringVar(&configFile, "config-file", "", "configuration yaml path")
+	flag.StringVar(&stateDir, "state-dir", "", "persistent state directory")
 	flag.Parse()
 
 	cfg, err := config.LoadConfig(configFile)

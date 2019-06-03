@@ -14,9 +14,11 @@ type Binding interface {
 }
 
 type stateField struct {
-	JsonName   string
-	HassName   string
-	reflection reflect.StructField
+	Name             string
+	JsonName         string
+	HassName         string
+	ValueTemplateKey string
+	reflection       reflect.StructField
 }
 
 func (f stateField) CommandRelativeTopic() string {
@@ -27,30 +29,44 @@ func (f stateField) CommandTopic(prefix string) string {
 	return fmt.Sprintf("%s/%s", prefix, f.CommandRelativeTopic())
 }
 
-type InferredBinding struct {
+type BindingHook = func(state State, update func(State) (State, error)) (State, error)
+
+type FieldBinding struct {
 	Field          stateField
 	TemplateSuffix string
+	Hook           BindingHook
 }
 
-func (b InferredBinding) String() string {
+func (b FieldBinding) String() string {
 	return fmt.Sprintf("bound_field(%s)", b.Field.reflection.Name)
 }
 
-func (b InferredBinding) Apply(state State, value string) (State, error) {
-	return deriveState(state, b, value)
+func (b FieldBinding) Apply(state State, value string) (State, error) {
+	update := func(state State) (State, error) {
+		return deriveState(state, b, value)
+	}
+	return b.Hook(state, update)
 }
 
-func (b InferredBinding) RelativeTopic() string {
+func (b FieldBinding) RelativeTopic() string {
 	return b.Field.CommandRelativeTopic()
 }
 
-func (b InferredBinding) Config() map[string]string {
+func (b FieldBinding) Config() map[string]string {
+	template := b.Field.ValueTemplateKey
+	if template == "" {
+		template = fmt.Sprintf("%s_%s_template", b.Field.HassName, b.TemplateSuffix)
+	}
 	return map[string]string{
-		b.Field.HassName + "_command_topic":                               b.Field.CommandTopic("~"),
-		b.Field.HassName + "_state_topic":                                 "~/state",
-		fmt.Sprintf("%s_%s_template", b.Field.HassName, b.TemplateSuffix): fmt.Sprintf("{{ value_json.%s }}", b.Field.JsonName),
+		b.Field.HassName + "_command_topic": b.Field.CommandTopic("~"),
+		b.Field.HassName + "_state_topic":   "~/state",
+		template:                            fmt.Sprintf("{{ value_json.%s }}", b.Field.JsonName),
 	}
 }
+
+const (
+	TemplateKey = "template_key:"
+)
 
 func reflectOnState(state interface{}) []stateField {
 	reflection := reflect.TypeOf(state)
@@ -71,7 +87,23 @@ func reflectOnState(state interface{}) []stateField {
 		jsonOpts := strings.SplitN(jsonTag, ",", 2)
 		jsonName := jsonOpts[0]
 
-		fields = append(fields, stateField{JsonName: jsonName, HassName: hassTag, reflection: field})
+		var valueTemplateKey string
+
+		hassOpts := strings.Split(hassTag, ",")
+		hassName := hassOpts[0]
+		for _, hassOpt := range hassOpts {
+			if strings.HasPrefix(hassOpt, TemplateKey) {
+				valueTemplateKey = hassOpt[len(TemplateKey):]
+			}
+		}
+
+		fields = append(fields, stateField{
+			Name:             field.Name,
+			JsonName:         jsonName,
+			HassName:         hassName,
+			ValueTemplateKey: valueTemplateKey,
+			reflection:       field,
+		})
 	}
 
 	if len(fields) == 0 {
@@ -81,19 +113,40 @@ func reflectOnState(state interface{}) []stateField {
 	return fields
 }
 
-func AutomaticBindings(state State, templateSuffix string) []Binding {
+type AutomaticBindingOptions struct {
+	TemplateSuffix string
+	UpdateHooks    map[string]BindingHook
+}
+
+func defaultHook(state State, update func(State) (State, error)) (State, error) {
+	return update(state)
+}
+
+func AutomaticBindings(
+	state State,
+	options AutomaticBindingOptions,
+) []Binding {
+	if options.TemplateSuffix == "" {
+		options.TemplateSuffix = "state"
+	}
+
 	fields := reflectOnState(state)
 	bindings := make([]Binding, 0, len(fields))
 	for _, field := range fields {
-		bindings = append(bindings, InferredBinding{
+		hook, hasHook := options.UpdateHooks[field.Name]
+		if !hasHook {
+			hook = defaultHook
+		}
+		bindings = append(bindings, FieldBinding{
 			Field:          field,
-			TemplateSuffix: templateSuffix,
+			TemplateSuffix: options.TemplateSuffix,
+			Hook:           hook,
 		})
 	}
 	return bindings
 }
 
-func deriveState(state State, binding InferredBinding, value string) (State, error) {
+func deriveState(state State, binding FieldBinding, value string) (State, error) {
 	stateReflection := reflect.TypeOf(state)
 	newStatePtr := reflect.New(stateReflection)
 	newStatePtr.Elem().Set(reflect.ValueOf(state))
@@ -101,7 +154,7 @@ func deriveState(state State, binding InferredBinding, value string) (State, err
 	target := newStatePtr.Elem().FieldByIndex(binding.Field.reflection.Index)
 
 	switch kind := target.Kind(); kind {
-	case reflect.Uint, reflect.Uint8:
+	case reflect.Uint, reflect.Uint8, reflect.Uint16:
 		val, err := strconv.ParseUint(value, 10, 64)
 		if err != nil {
 			return nil, err

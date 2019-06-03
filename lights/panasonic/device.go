@@ -1,16 +1,39 @@
 package panasonic
 
 import (
+	"github.com/thefloweringash/hass_ir_adapter/device"
 	"github.com/thefloweringash/hass_ir_adapter/emitters"
+	"github.com/thefloweringash/hass_ir_adapter/emitters/encodings"
 	"github.com/thefloweringash/hass_ir_adapter/lights"
 )
 
 type Device struct {
-	emitter emitters.Emitter
 	channel Channel
 }
 
-func (device *Device) PushState(state lights.State) error {
+type State struct {
+	lights.State
+	Brightness uint8 `json:"brightness" hass:"brightness"`
+}
+
+func (state State) Bindings() []device.Binding {
+	bindings := state.State.Bindings()
+	var options device.AutomaticBindingOptions
+	bindings = append(bindings, device.AutomaticBindings(state, options)...)
+	return bindings
+}
+
+func (device *Device) Config() map[string]interface{} {
+	return map[string]interface{}{}
+}
+
+func (device *Device) DefaultState() device.State {
+	return State{Brightness: 255}
+}
+
+func (device *Device) PushState(emitter emitters.Emitter, rawState device.State) error {
+	state := rawState.(State)
+
 	command := Command{Channel: device.channel}
 	switch {
 	case !state.On:
@@ -28,8 +51,7 @@ func (device *Device) PushState(state lights.State) error {
 		return err
 	}
 
-	return device.emitter.Emit(emitters.Command{
-		Encoding: emitters.Panasonic,
-		Payload:  encoded,
+	return emitter.Emit(encodings.Panasonic{
+		Payload: encoded,
 	})
 }

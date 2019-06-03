@@ -22,21 +22,20 @@ func NewToken(minimumGap time.Duration) *token {
 	}
 }
 
-func (token *token) Take() (int, time.Duration) {
-	var value int
+func (token *token) Take() time.Duration {
 	select {
-	case value = <-token.tokenChannel:
-		return value, 0
+	case <-token.tokenChannel:
+		return 0
 	default:
 		waitStart := time.Now()
-		value = <-token.tokenChannel
-		return value, time.Now().Sub(waitStart)
+		<-token.tokenChannel
+		return time.Now().Sub(waitStart)
 	}
 }
 
-func (token *token) Return(val int) {
+func (token *token) Return() {
 	go func() {
 		time.Sleep(token.minimumGap)
-		token.tokenChannel <- val
+		token.tokenChannel <- 0
 	}()
 }

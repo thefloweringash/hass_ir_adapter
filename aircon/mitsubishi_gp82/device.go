@@ -5,10 +5,10 @@ import (
 
 	"github.com/thefloweringash/hass_ir_adapter/aircon"
 	"github.com/thefloweringash/hass_ir_adapter/emitters"
+	"github.com/thefloweringash/hass_ir_adapter/emitters/encodings"
 )
 
 type Device struct {
-	emitters.Emitter
 }
 
 func Encode(state aircon.State) ([]byte, error) {
@@ -48,17 +48,15 @@ func Encode(state aircon.State) ([]byte, error) {
 	}.Encode()
 }
 
-func (ac *Device) PushState(state aircon.State) error {
+func (ac *Device) PushState(emitter emitters.Emitter, state aircon.State) error {
 	payload, err := Encode(state)
 	if err != nil {
 		return err
 	}
 
-	cmd := emitters.Command{
-		Encoding: emitters.Panasonic,
-		Payload:  payload,
-	}
-	return ac.Emit(cmd)
+	return emitter.Emit(encodings.Panasonic{
+		Payload: payload,
+	})
 }
 
 func (ac *Device) ValidState(state aircon.State) bool {
@@ -72,9 +70,11 @@ func (ac *Device) DefaultState() aircon.State {
 	}
 }
 
-func (ac *Device) ExportConfig(config *aircon.Config) {
-	config.FanModes = []string{"auto", "quiet", "weak", "strong"}
-	config.Modes = []string{"off", "cool", "heat", "dry"}
-	config.MinTemp = 18
-	config.MaxTemp = 31
+func (ac *Device) Config() map[string]interface{} {
+	return map[string]interface{}{
+		aircon.KeyFanModes: []string{"auto", "quiet", "weak", "strong"},
+		aircon.KeyModes:    []string{"off", "cool", "heat", "dry"},
+		aircon.KeyMinTemp:  18,
+		aircon.KeyMaxTemp:  31,
+	}
 }

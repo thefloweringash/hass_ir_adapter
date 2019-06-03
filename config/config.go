@@ -11,6 +11,7 @@ import (
 	"github.com/thefloweringash/hass_ir_adapter/emitters"
 	"github.com/thefloweringash/hass_ir_adapter/emitters/irblaster"
 	"github.com/thefloweringash/hass_ir_adapter/emitters/irkit"
+	"github.com/thefloweringash/hass_ir_adapter/lights/daiko"
 	"github.com/thefloweringash/hass_ir_adapter/lights/panasonic"
 )
 
@@ -109,6 +110,8 @@ func (c *Config) UnmarshalYAML(value *yaml.Node) error {
 			switch typeStr {
 			case "panasonic":
 				factory = &panasonic.Config{}
+			case "daiko":
+				factory = &daiko.Config{}
 			}
 			return
 		})
