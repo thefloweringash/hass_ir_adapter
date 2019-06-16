@@ -15,7 +15,7 @@ func (device *Device) PushState(state lights.State) error {
 	switch {
 	case !state.On:
 		command.Action = ActionOff
-	case state.Brightness < 10:
+	case state.Brightness < 26:
 		command.Action = ActionNight
 	case state.Brightness >= 230:
 		command.Action = ActionFull
