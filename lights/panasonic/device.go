@@ -29,6 +29,7 @@ func (device *Device) PushState(state lights.State) error {
 	}
 
 	return device.emitter.Emit(emitters.Command{
-		emitters.Panasonic, encoded,
+		Encoding: emitters.Panasonic,
+		Payload:  encoded,
 	})
 }

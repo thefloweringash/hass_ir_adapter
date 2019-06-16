@@ -90,7 +90,7 @@ func (d *device) Run() (func(), error) {
 
 	go func() {
 		running := true
-		for running == true {
+		for running {
 			d.logger.Printf("state=%v, waiting for command", d.state.State)
 
 			if err := d.mqtt.PublishState(d.state.State); err != nil {
