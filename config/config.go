@@ -6,6 +6,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/thefloweringash/hass_ir_adapter/aircon/daikin"
 	"github.com/thefloweringash/hass_ir_adapter/aircon/mitsubishi_gp82"
 	"github.com/thefloweringash/hass_ir_adapter/device"
 	"github.com/thefloweringash/hass_ir_adapter/emitters"
@@ -94,6 +95,8 @@ func (c *Config) UnmarshalYAML(value *yaml.Node) error {
 			switch typeStr {
 			case "mitsubishi_gp82":
 				factory = &mitsubishi_gp82.Config{}
+			case "daikin":
+				factory = &daikin.Config{}
 			}
 			return
 		})

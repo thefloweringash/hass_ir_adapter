@@ -141,10 +141,8 @@ func (device *Device) PushState(emitter emitters.Emitter, rawState device.State)
 		return err
 	}
 
-	return emitter.Emit(encodings.Repeated{
-		Inner: encodings.NEC{
-			Payload: command,
-		},
-		Gap: 35,
-	})
+	return emitter.Emit(encodings.Repeat(
+		encodings.NEC{Payload: command},
+		35,
+	))
 }
