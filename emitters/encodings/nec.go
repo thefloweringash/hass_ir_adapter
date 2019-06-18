@@ -10,7 +10,7 @@ type NEC struct {
 }
 
 func (command NEC) ToIntervals() []uint16 {
-	return intervals.EncodeNec(command.Payload)
+	return intervals.EncodingNec.Encode(command.Payload)
 }
 
 func (command NEC) ToIRBlasterEncoding() []irblaster.Command {

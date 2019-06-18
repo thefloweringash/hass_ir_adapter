@@ -12,13 +12,25 @@ emitters:
     endpoint: http://192.168.1.2
 
 aircons:
-  - id: living_room
+  - id: living_room_ac
     name: "Living Room"
     emitter: ir_living_room
     type: mitsubishi_gp82
     temperature_topic: homie/ESP_3/temperature/degrees
-  - id: bedroom
+  - id: bedroom_ac
     name: "Bedroom"
     emitter: ir_bedroom
-    type: mitsubishi_gp82
+    type: daikin
     temperature_topic: homie/ESP_4/temperature/degrees
+
+lights:
+  - id: living_room_lights
+    name: "Living Room Lights"
+    type: daiko
+    emitter: ir_living_room
+    channel: 1
+  - id: bedroom_lights
+    name: "Bedroom Lights"
+    type: panasonic
+    emitter: ir_bedroom
+    channel: 1
