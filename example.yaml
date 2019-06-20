@@ -5,9 +5,11 @@ mqtt:
 
 emitters:
   - id: ir_living_room
+    type: irblaster
     topic: ir/ESP_1/send
   - id: ir_bedroom
-    topic: ir/ESP_2/send
+    type: irkit
+    endpoint: http://192.168.1.2
 
 aircons:
   - id: living_room

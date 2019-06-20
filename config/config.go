@@ -10,6 +10,7 @@ import (
 	"github.com/thefloweringash/hass_ir_adapter/device"
 	"github.com/thefloweringash/hass_ir_adapter/emitters"
 	"github.com/thefloweringash/hass_ir_adapter/emitters/irblaster"
+	"github.com/thefloweringash/hass_ir_adapter/emitters/irkit"
 	"github.com/thefloweringash/hass_ir_adapter/lights/panasonic"
 )
 
@@ -43,8 +44,8 @@ func getTypeKey(value yaml.Node) (string, error) {
 	return typeString, nil
 }
 
-func decodeVirtual(value yaml.Node, newFactory func(t string) device.Factory) (device.Factory, error) {
-	var factory device.Factory
+func decodeVirtual(value yaml.Node, newFactory func(t string) interface{}) (interface{}, error) {
+	var factory interface{}
 
 	typeString, err := getTypeKey(value)
 	if err != nil {
@@ -70,15 +71,25 @@ func (c *Config) UnmarshalYAML(value *yaml.Node) error {
 	c.MQTT = generic.MQTT
 
 	for _, emitterNode := range generic.Emitters {
-		factory := irblaster.Config{}
-		if err := emitterNode.Decode(&factory); err != nil {
+		factory, err := decodeVirtual(emitterNode, func(typeStr string) (factory interface{}) {
+			switch typeStr {
+			case "irblaster":
+				factory = &irblaster.Config{}
+			case "irkit":
+				factory = &irkit.Config{}
+			}
+			return
+		})
+
+		if err != nil {
 			return err
 		}
-		c.Emitters = append(c.Emitters, &factory)
+
+		c.Emitters = append(c.Emitters, factory.(emitters.Factory))
 	}
 
 	for _, airconNode := range generic.Aircons {
-		factory, err := decodeVirtual(airconNode, func(typeStr string) (factory device.Factory) {
+		factory, err := decodeVirtual(airconNode, func(typeStr string) (factory interface{}) {
 			switch typeStr {
 			case "mitsubishi_gp82":
 				factory = &mitsubishi_gp82.Config{}
@@ -90,11 +101,11 @@ func (c *Config) UnmarshalYAML(value *yaml.Node) error {
 			return err
 		}
 
-		c.Devices = append(c.Devices, factory)
+		c.Devices = append(c.Devices, factory.(device.Factory))
 	}
 
 	for _, lightNode := range generic.Lights {
-		factory, err := decodeVirtual(lightNode, func(typeStr string) (factory device.Factory) {
+		factory, err := decodeVirtual(lightNode, func(typeStr string) (factory interface{}) {
 			switch typeStr {
 			case "panasonic":
 				factory = &panasonic.Config{}
@@ -106,7 +117,7 @@ func (c *Config) UnmarshalYAML(value *yaml.Node) error {
 			return err
 		}
 
-		c.Devices = append(c.Devices, factory)
+		c.Devices = append(c.Devices, factory.(device.Factory))
 	}
 
 	return nil

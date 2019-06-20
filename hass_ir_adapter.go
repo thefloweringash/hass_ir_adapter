@@ -51,7 +51,8 @@ func run(cfg config.Config, stateDir string) error {
 
 	emitters := map[string]emitters.Emitter{}
 	for _, emitterFactory := range cfg.Emitters {
-		emitter, err := emitterFactory.New(c)
+		logger := log.New(os.Stdout, fmt.Sprintf("emitter/%s: ", emitterFactory.Id()), log.Lshortfile)
+		emitter, err := emitterFactory.New(c, logger)
 		if err != nil {
 			return err
 		}
