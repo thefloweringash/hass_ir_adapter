@@ -12,7 +12,7 @@ type Device struct {
 	emitters.Emitter
 }
 
-func encode(state aircon.State) ([][]byte, error) {
+func encode(state aircon.State) ([]byte, []byte, error) {
 	var mode Mode
 
 	switch state.Mode {
@@ -28,7 +28,7 @@ func encode(state aircon.State) ([][]byte, error) {
 	case "sendoff_wind":
 		mode = ModeSendoffWind
 	default:
-		return nil, fmt.Errorf("unknown mode: '%s'", state.Mode)
+		return nil, nil, fmt.Errorf("unknown mode: '%s'", state.Mode)
 	}
 
 	return State{
@@ -59,15 +59,11 @@ func (ac *Device) ValidState(state aircon.State) bool {
 }
 
 func (ac *Device) PushState(emitter emitters.Emitter, state aircon.State) error {
-	payloads, err := encode(state)
+	p1, p2, err := encode(state)
 	if err != nil {
 		return err
 	}
 
-	commands := []emitters.Command{
-		encodings.Panasonic{Payload: payloads[0]},
-		encodings.Panasonic{Payload: payloads[1]},
-	}
-
-	return emitter.Emit(encodings.Intercalate(commands, 35))
+	command := encodings.Daikin{P1: p1, P2: p2}
+	return emitter.Emit(command)
 }

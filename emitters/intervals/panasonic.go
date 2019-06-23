@@ -24,7 +24,3 @@ var EncodingPanasonic = GenericEncoding{
 	OneSpace:    PanasonicOneSpace,
 	ZeroSpace:   PanasonicZeroSpace,
 }
-
-func EncodePanasonic(payload []byte) []uint16 {
-	return EncodeGeneric(EncodingPanasonic, payload)
-}

@@ -24,7 +24,3 @@ var EncodingNec = GenericEncoding{
 	OneSpace:    NecOneSpace,
 	ZeroSpace:   NecZeroSpace,
 }
-
-func EncodeNec(payload []byte) []uint16 {
-	return EncodeGeneric(EncodingNec, payload)
-}

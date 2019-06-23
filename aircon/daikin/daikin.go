@@ -101,7 +101,7 @@ type State struct {
 	Temperature float32
 }
 
-func (state State) Encode() ([][]byte, error) {
+func (state State) Encode() ([]byte, []byte, error) {
 	p1 := p1{
 		Header:    p1header,
 		FanYonder: false,
@@ -109,7 +109,7 @@ func (state State) Encode() ([][]byte, error) {
 
 	p1bytes, err := restruct.Pack(binary.LittleEndian, &p1)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	p1bytes = append(p1bytes, checksum(p1bytes))
@@ -128,10 +128,10 @@ func (state State) Encode() ([][]byte, error) {
 
 	p2bytes, err := restruct.Pack(binary.LittleEndian, &p2)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	p2bytes = append(p2bytes, checksum(p2bytes))
 
-	return [][]byte{p1bytes, p2bytes}, nil
+	return p1bytes, p2bytes, nil
 }

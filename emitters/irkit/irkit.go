@@ -60,6 +60,8 @@ func (irkit *IRKit) Emit(command emitters.Command) error {
 	intervals := intervalCommand.ToIntervals()
 	irkitIntervals := []uint16{}
 
+	irkit.Logger.Printf("raw intervals: %v\n", intervals)
+
 	for i := range intervals {
 		x := int(intervals[i]) * 2
 		for x > math.MaxUint16 {

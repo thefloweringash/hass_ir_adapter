@@ -10,7 +10,7 @@ type Panasonic struct {
 }
 
 func (command Panasonic) ToIntervals() []uint16 {
-	return intervals.EncodePanasonic(command.Payload)
+	return intervals.EncodingPanasonic.Encode(command.Payload)
 }
 
 const EncodingPanasonic = 241
