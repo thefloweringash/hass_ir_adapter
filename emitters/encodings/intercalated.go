@@ -36,7 +36,7 @@ func (r intercalated) ToIRBlasterEncoding() []irblaster.Command {
 
 	delay := irblaster.Command{
 		Encoding: EncodingDelay,
-		Payload:  []interface{}{r.gap * 1000},
+		Payload:  []interface{}{r.gap},
 	}
 
 	for _, i := range r.inner {
