@@ -16,6 +16,18 @@ const (
 	ModeSendoffWind Mode = 6
 )
 
+type VaneDirection uint8
+
+const (
+	VaneDirectionStop  VaneDirection = 0
+	VaneDirectionSwing VaneDirection = 15
+)
+
+const (
+	FanSpeedAutomatic = 10
+	FanSpeedQuiet     = 11
+)
+
 func checksum(buf []byte) uint8 {
 	var c uint8
 	for _, x := range buf {
@@ -50,7 +62,7 @@ func encodeTimers(onTimer, offTimer uint16) []byte {
 }
 
 var (
-	p1header = []byte{17, 218, 39, 0, 2}
+	p1header = []byte{17, 218, 39, 0, 1}
 	p2header = []byte{17, 218, 39, 0, 0}
 )
 
@@ -75,8 +87,8 @@ type p2 struct {
 
 	Padding3 uint8
 
-	FanSpeed      uint8 `struct:"uint8:4"`
-	VaneDirection uint8 `struct:"uint8:4"`
+	FanSpeed      uint8         `struct:"uint8:4"`
+	VaneDirection VaneDirection `struct:"uint8:4"`
 
 	LeftRight uint8 `struct:"uint8:4"`
 	Padding4  uint8 `struct:"uint8:4"`
@@ -92,7 +104,12 @@ type p2 struct {
 	Padding7      uint8 `struct:"uint8:7"`
 
 	Padding8 uint8
-	Padding9 uint16
+
+	Padding9   uint8 `struct:"uint8:3"`
+	AirCleaner bool  `struct:"uint8:1"`
+	Padding10  uint8 `struct:"uint8:4"`
+
+	Padding11 uint8
 }
 
 type State struct {
@@ -120,10 +137,12 @@ func (state State) Encode() ([]byte, []byte, error) {
 		Power:         state.On,
 		Padding2:      1,
 		Temperature:   uint8(state.Temperature * 2),
-		FanSpeed:      3,
-		VaneDirection: 15,
+		FanSpeed:      FanSpeedAutomatic,
+		VaneDirection: VaneDirectionStop,
 		Timers:        encodeTimers(0, 0),
-		Padding8:      195,
+		Padding8:      193,
+		AirCleaner:    true,
+		Padding9:      4,
 	}
 
 	p2bytes, err := restruct.Pack(binary.LittleEndian, &p2)
