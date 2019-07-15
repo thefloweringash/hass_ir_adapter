@@ -42,7 +42,7 @@ func (ac *Device) Config() map[string]interface{} {
 	return map[string]interface{}{
 		aircon.KeyMinTemp: 18,
 		aircon.KeyMaxTemp: 31,
-		aircon.KeyModes:   []string{"auto", "dry", "cool", "heat", "sendoff_wind"},
+		aircon.KeyModes:   []string{"off", "dry", "cool", "heat"},
 	}
 }
 
