@@ -18,7 +18,7 @@ type State struct {
 
 func (state State) Bindings() []device.Binding {
 	bindings := state.State.Bindings()
-	var options device.AutomaticBindingOptions
+	options := device.AutomaticBindingOptions{TemplateSuffix: "value"}
 	bindings = append(bindings, device.AutomaticBindings(state, options)...)
 	return bindings
 }
