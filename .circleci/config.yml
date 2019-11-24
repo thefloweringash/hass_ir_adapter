@@ -7,11 +7,22 @@ workflows:
       - go-build-and-test
       - nix-build-and-test-stable
       - nix-build-and-test-unstable
+  nix-periodic-build:
+    triggers:
+      - schedule:
+          cron: '42 2 * * 1'
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - nix-build-and-test-stable
+      - nix-build-and-test-unstable
 
 jobs:
   go-build-and-test:
     docker:
-      - image: circleci/golang:1.11
+      - image: circleci/golang:1.13
     steps:
       - run:
           name: setup environment
@@ -25,7 +36,7 @@ jobs:
       - image: nixorg/nix:circleci
     steps:
       - checkout
-      - run: nix-build -I nixpkgs=channel:nixos-19.03
+      - run: nix-build -I nixpkgs=channel:nixos-19.09
 
   nix-build-and-test-unstable:
     docker:
