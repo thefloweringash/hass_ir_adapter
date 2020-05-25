@@ -8,6 +8,7 @@ import (
 
 	"github.com/thefloweringash/hass_ir_adapter/aircon/daikin"
 	"github.com/thefloweringash/hass_ir_adapter/aircon/mitsubishi_gp82"
+	"github.com/thefloweringash/hass_ir_adapter/aircon/mitsubishi_rh101"
 	"github.com/thefloweringash/hass_ir_adapter/device"
 	"github.com/thefloweringash/hass_ir_adapter/emitters"
 	"github.com/thefloweringash/hass_ir_adapter/emitters/irblaster"
@@ -93,6 +94,8 @@ func (c *Config) UnmarshalYAML(value *yaml.Node) error {
 	for _, airconNode := range generic.Aircons {
 		factory, err := decodeVirtual(airconNode, func(typeStr string) (factory interface{}) {
 			switch typeStr {
+			case "mitsubishi_rh101":
+				factory = &mitsubishi_rh101.Config{}
 			case "mitsubishi_gp82":
 				factory = &mitsubishi_gp82.Config{}
 			case "daikin":
