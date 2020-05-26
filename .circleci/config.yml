@@ -36,7 +36,7 @@ jobs:
       - image: nixorg/nix:circleci
     steps:
       - checkout
-      - run: nix-build -I nixpkgs=channel:nixos-19.09
+      - run: nix-build -I nixpkgs=channel:nixos-20.03
 
   nix-build-and-test-unstable:
     docker:
