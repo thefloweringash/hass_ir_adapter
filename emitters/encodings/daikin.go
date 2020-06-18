@@ -4,7 +4,6 @@ import (
 	"github.com/thefloweringash/hass_ir_adapter/emitters"
 	"github.com/thefloweringash/hass_ir_adapter/emitters/intervals"
 	"github.com/thefloweringash/hass_ir_adapter/emitters/irblaster"
-	"github.com/thefloweringash/hass_ir_adapter/emitters/irkit"
 )
 
 type daikinHeader struct{}
@@ -39,5 +38,5 @@ func (daikin Daikin) ToIRBlasterEncoding() []irblaster.Command {
 }
 
 func (daikin Daikin) ToIntervals() []uint16 {
-	return daikin.build().(irkit.ToIntervals).ToIntervals()
+	return daikin.build().(ToIntervals).ToIntervals()
 }

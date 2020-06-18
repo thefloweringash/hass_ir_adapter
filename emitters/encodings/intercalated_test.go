@@ -7,7 +7,6 @@ import (
 
 	"github.com/thefloweringash/hass_ir_adapter/emitters"
 	"github.com/thefloweringash/hass_ir_adapter/emitters/irblaster"
-	"github.com/thefloweringash/hass_ir_adapter/emitters/irkit"
 )
 
 func TestIntercalated_ToIntervals(t *testing.T) {
@@ -17,7 +16,7 @@ func TestIntercalated_ToIntervals(t *testing.T) {
 		Raw{Intervals: []uint16{3}},
 	}
 
-	intervals := Intercalate(raws, 35).(irkit.ToIntervals).ToIntervals()
+	intervals := Intercalate(raws, 35).(ToIntervals).ToIntervals()
 
 	assert.Equal(t, []uint16{1, 35000, 2, 35000, 3}, intervals)
 }

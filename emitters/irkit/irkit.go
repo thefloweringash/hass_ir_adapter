@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/thefloweringash/hass_ir_adapter/emitters"
+	"github.com/thefloweringash/hass_ir_adapter/emitters/encodings"
 )
 
 type IRKit struct {
@@ -47,12 +48,8 @@ type Message struct {
 	Intervals []uint16 `json:"data"`
 }
 
-type ToIntervals interface {
-	ToIntervals() []uint16
-}
-
 func (irkit *IRKit) Emit(command emitters.Command) error {
-	intervalCommand, ok := command.(ToIntervals)
+	intervalCommand, ok := command.(encodings.ToIntervals)
 	if !ok {
 		return errors.New("command not convertible to intervals")
 	}

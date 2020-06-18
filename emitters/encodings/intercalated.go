@@ -3,7 +3,6 @@ package encodings
 import (
 	"github.com/thefloweringash/hass_ir_adapter/emitters"
 	"github.com/thefloweringash/hass_ir_adapter/emitters/irblaster"
-	"github.com/thefloweringash/hass_ir_adapter/emitters/irkit"
 )
 
 const (
@@ -19,7 +18,7 @@ func (r intercalated) ToIntervals() []uint16 {
 	var intervals []uint16
 
 	for _, i := range r.inner {
-		inner, ok := i.(irkit.ToIntervals)
+		inner, ok := i.(ToIntervals)
 		if !ok {
 			panic("Can't intercalate via intervals unless the repeated encoding is intervals-able!")
 		}
