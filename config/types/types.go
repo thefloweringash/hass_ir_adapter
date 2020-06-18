@@ -16,8 +16,9 @@ type Emitter struct {
 }
 
 type Aircon struct {
-	Device           `yaml:",inline"`
-	TemperatureTopic string `yaml:"temperature_topic"`
+	Device              `yaml:",inline"`
+	TemperatureTopic    string `yaml:"temperature_topic"`
+	TemperatureTemplate string `yaml:"temperature_template"`
 }
 
 type Light struct {

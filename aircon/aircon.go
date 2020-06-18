@@ -34,14 +34,18 @@ type AirconController interface {
 }
 
 type Aircon struct {
-	controller       AirconController
-	temperatureTopic string
+	controller          AirconController
+	temperatureTopic    string
+	temperatureTemplate string
 }
 
 func (aircon *Aircon) Config() map[string]interface{} {
 	config := map[string]interface{}{}
 	if aircon.temperatureTopic != "" {
 		config["current_temperature_topic"] = aircon.temperatureTopic
+	}
+	if aircon.temperatureTemplate != "" {
+		config["current_temperature_template"] = aircon.temperatureTemplate
 	}
 	for k, v := range aircon.controller.Config() {
 		config[k] = v
@@ -65,8 +69,9 @@ func New(
 	stateDir string,
 ) (device.Device, error) {
 	aircon := &Aircon{
-		controller:       controller,
-		temperatureTopic: cfg.TemperatureTopic,
+		controller:          controller,
+		temperatureTopic:    cfg.TemperatureTopic,
+		temperatureTemplate: cfg.TemperatureTemplate,
 	}
 
 	return device.New(
