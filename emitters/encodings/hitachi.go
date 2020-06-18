@@ -5,14 +5,14 @@ import (
 	"github.com/thefloweringash/hass_ir_adapter/emitters/irblaster"
 )
 
-type NEC struct {
+type HitachiAc424 struct {
 	Payload []byte
 }
 
-func (command NEC) ToIntervals() []uint16 {
-	return intervals.EncodingNec.Encode(command.Payload)
+func (command HitachiAc424) ToIntervals() []uint16 {
+	return intervals.EncodingHitachiAc424.Encode(command.Payload)
 }
 
-func (command NEC) ToIRBlasterEncoding() []irblaster.Command {
+func (command HitachiAc424) ToIRBlasterEncoding() []irblaster.Command {
 	return intervalsToIRBlasterCommand(command.ToIntervals())
 }
