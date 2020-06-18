@@ -13,6 +13,7 @@ import (
 	"github.com/thefloweringash/hass_ir_adapter/emitters"
 	"github.com/thefloweringash/hass_ir_adapter/emitters/irblaster"
 	"github.com/thefloweringash/hass_ir_adapter/emitters/irkit"
+	"github.com/thefloweringash/hass_ir_adapter/emitters/tasmota"
 	"github.com/thefloweringash/hass_ir_adapter/lights/daiko"
 	"github.com/thefloweringash/hass_ir_adapter/lights/panasonic"
 )
@@ -80,6 +81,8 @@ func (c *Config) UnmarshalYAML(value *yaml.Node) error {
 				factory = &irblaster.Config{}
 			case "irkit":
 				factory = &irkit.Config{}
+			case "tasmota":
+				factory = &tasmota.Config{}
 			}
 			return
 		})
