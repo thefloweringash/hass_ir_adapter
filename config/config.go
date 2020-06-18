@@ -9,6 +9,7 @@ import (
 	"github.com/thefloweringash/hass_ir_adapter/aircon/daikin"
 	"github.com/thefloweringash/hass_ir_adapter/aircon/mitsubishi_gp82"
 	"github.com/thefloweringash/hass_ir_adapter/aircon/mitsubishi_rh101"
+	"github.com/thefloweringash/hass_ir_adapter/aircon/tasmota_hvac"
 	"github.com/thefloweringash/hass_ir_adapter/device"
 	"github.com/thefloweringash/hass_ir_adapter/emitters"
 	"github.com/thefloweringash/hass_ir_adapter/emitters/irblaster"
@@ -103,6 +104,8 @@ func (c *Config) UnmarshalYAML(value *yaml.Node) error {
 				factory = &mitsubishi_gp82.Config{}
 			case "daikin":
 				factory = &daikin.Config{}
+			case "tasmota_hvac":
+				factory = &tasmota_hvac.Config{}
 			}
 			return
 		})
