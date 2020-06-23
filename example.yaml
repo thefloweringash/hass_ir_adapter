@@ -7,6 +7,9 @@ emitters:
   - id: ir_living_room
     type: irblaster
     topic: ir/ESP_1/send
+  - id: ir_tasmota
+    type: tasmota
+    topic: ir/tasmota/cmnd
   - id: ir_bedroom
     type: irkit
     endpoint: http://192.168.1.2
@@ -22,6 +25,14 @@ aircons:
     emitter: ir_bedroom
     type: daikin
     temperature_topic: homie/ESP_4/temperature/degrees
+  - id: tasmota_ac
+    name: "Tasmota Example HVAC"
+    emitter: ir_tasmota
+    type: tasmota_hvac
+    vendor: HITACHI_AC424
+    temperature_topic: tasmota/17EC62/tele/SENSOR
+    temperature_template: |-
+      {{ value_json['SHT3X-0x45'].Temperature }}
 
 lights:
   - id: living_room_lights
