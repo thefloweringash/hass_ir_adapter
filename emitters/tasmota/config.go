@@ -12,10 +12,11 @@ import (
 type Config struct {
 	types.Emitter `yaml:",inline"`
 	Topic         string
+	Compact       bool
 }
 
 func (cfg *Config) New(c mqtt.Client, logger *log.Logger) (emitters.Emitter, error) {
-	return NewTasmotaEmitter(c, logger, cfg.Topic), nil
+	return NewTasmotaEmitter(c, logger, cfg.Topic, cfg.Compact), nil
 }
 
 func (cfg *Config) Id() string {
