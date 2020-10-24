@@ -1,4 +1,4 @@
-import (<nixpkgs> + "/nixos/tests/make-test.nix") ({ pkgs, lib, ... }:
+import (<nixpkgs> + "/nixos/tests/make-test-python.nix") ({ pkgs, lib, ... }:
 {
   machine = { options, pkgs, ... }: {
     imports = [ ./module.nix ];
@@ -20,25 +20,43 @@ import (<nixpkgs> + "/nixos/tests/make-test.nix") ({ pkgs, lib, ... }:
   };
 
   testScript = ''
-    startAll;
+    start_all()
 
-    $machine->waitForUnit('mosquitto.service');
-    $machine->waitForUnit('hass_ir_adapter.service');
+    machine.wait_for_unit("mosquitto.service")
+    machine.wait_for_unit("hass_ir_adapter.service")
 
-    $machine->execute('mosquitto_sub -t "homeassistant/#" -F "%t -> %p" | logger -t mqtt-homeassistant & disown');
-    $machine->execute('mosquitto_sub -t "ir/#" -F "%t -> %x" | logger -t mqtt-ir & disown');
+    # Loggers to enhance test output
+    machine.execute(
+        'mosquitto_sub -t "homeassistant/#" -F "%t -> %p" | logger -t mqtt-homeassistant & disown'
+    )
+    machine.execute('mosquitto_sub -t "ir/#" -F "%t -> %x" | logger -t mqtt-ir & disown')
 
-    $machine->execute('mosquitto_sub -t ir/ESP_1/send -F %x | tee /tmp/esp1.log &');
-    $machine->execute('mosquitto_sub -t ir/tasmota/cmnd/IRhvac -F %p | tee /tmp/tasmota.log &');
-    $machine->execute('mosquitto_sub -t homeassistant/climate/living_room_ac/state -F %p | tee /tmp/climate.log &');
+    # Command captures
+    machine.execute("mosquitto_sub -t ir/ESP_1/send -F %x | tee /tmp/esp1.log &")
+    machine.execute(
+        "mosquitto_sub -t ir/tasmota/cmnd/IRhvac -F %p | tee /tmp/tasmota.log &"
+    )
+    machine.execute(
+        "mosquitto_sub -t homeassistant/climate/living_room_ac/state -F %p | tee /tmp/climate.log &"
+    )
 
-    $machine->execute('mosquitto_pub -t homeassistant/climate/living_room_ac/set_mode -m cool');
-    $machine->execute('mosquitto_pub -t homeassistant/climate/tasmota_ac/set_mode -m cool');
+    # Send state changes
+    machine.execute(
+        "mosquitto_pub -t homeassistant/climate/living_room_ac/set_mode -m cool"
+    )
+    machine.execute("mosquitto_pub -t homeassistant/climate/tasmota_ac/set_mode -m cool")
 
-    $machine->sleep(5);
+    machine.sleep(5)
 
-    $machine->succeed('set -x && test "$(cat /tmp/esp1.log)" == 010ff123cb26010024030d000000000049');
-    $machine->succeed('set -x && test "$(jq -r --slurp "last | .Vendor" < /tmp/tasmota.log)" == HITACHI_AC424');
-    $machine->succeed('set -x && test "$(jq -r --slurp "last | .mode" < /tmp/climate.log)" == cool');
+    # Test state changes resulted in expected commands
+    machine.succeed(
+        'set -x && test "$(cat /tmp/esp1.log)" == 010ff123cb26010024030d000000000049'
+    )
+    machine.succeed(
+        'set -x && test "$(jq -r --slurp "last | .Vendor" < /tmp/tasmota.log)" == HITACHI_AC424'
+    )
+    machine.succeed(
+        'set -x && test "$(jq -r --slurp "last | .mode" < /tmp/climate.log)" == cool'
+    )
   '';
 })
